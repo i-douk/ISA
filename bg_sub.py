@@ -1,7 +1,7 @@
 # Gaussian Mixture Model (GMM) with online k-means approx. 
 # Stauffer & Grimson Algorithm for background subtraction
 # Based on original paper 'Adaptive background mixture models for real-time tracking' and lab instructions
-# PyTorch was used for familiarity, clear tensor expressions and easy GPU switching for faster computation
+# PyTorch was used for familiarity, clear tensor expressions
 # OpenCV, although it offers out of the box classes for this assignement is not used intentionally to avoid hiding any logic of the implementation of the Stauffer and Grimson algorithm as well as the morphological denoising step
 
 import os
@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision.transforms import functional as transforms
 
-device = "cuda"  if torch.cuda.is_available() else "cpu"
+device = "cpu"
 
 # Definition of the GMM class and initialisations, nn.Module here is used as a container not as a neural network
 class OnlineGMM(torch.nn.Module):
@@ -23,10 +23,10 @@ class OnlineGMM(torch.nn.Module):
         self.var = torch.ones(K, device=device) * init_var
         self.pi = torch.ones(K, device=device) / K
 
-# Not a neural network so no learning via gradients
+    # Not a neural network so no learning via gradients
     @torch.no_grad()
 
-# Func update_gaussian takes single pixel x from a frame, updates the mixture of Gaussians for x depending on matching iwth existing gaussians
+    # Func update_gaussian takes single pixel x from a frame, updates the mixture of Gaussians for x depending on matching iwth existing gaussians
     def update_gaussians(self, x):
         # makes x a torch tensor, ensure it lives in the correct device, and define type for type consistency
         x = torch.as_tensor(x, device=self.device, dtype=torch.float32)
@@ -64,7 +64,7 @@ class OnlineGMM(torch.nn.Module):
 def load_images_as_grayscale(folder_path, device=device):
     image_files = sorted(
         f for f in os.listdir(folder_path)
-        if f.lower().endswith((".jpeg"))
+        if f.lower().endswith((".jpeg")) # extend file estensions when needed
     )
 
     frames = []
@@ -87,6 +87,7 @@ def initialize_pixel_models(H, W, K=3, lr=1/40):
 
 # runs GMM on sequence
 def run_gmm_sequence(frames, lr):
+    frames = frames.squeeze(1) 
     num_frames, H, W = frames.shape
     # initialize a separate OnlineGMM per pixel (H x W grid)
     models = initialize_pixel_models(H, W, K=3, lr=lr)
