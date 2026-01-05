@@ -6,7 +6,7 @@ import random
 
 # Task 2 : Tracking by detection using spatial distance alone
 
-def compute_single_box_center(box):
+def compute_center(box):
     x1, y1, x2, y2 = box
     return np.array([(x1 + x2) / 2, (y1 + y2) / 2])
 
@@ -19,7 +19,7 @@ def track_by_distance(predictions, num_frames, tau, max_dist=50):
         detections = np.array(predictions.get(frame_idx, []), dtype=np.float32)
 
         # compute detection bounding box centers
-        det_centers = np.array([compute_single_box_center(box) for box in detections])
+        det_centers = np.array([compute_center(box) for box in detections])
 
         assigned_tracks = set()
         assigned_detections = set()
@@ -27,7 +27,7 @@ def track_by_distance(predictions, num_frames, tau, max_dist=50):
         # build list of all possible track-detection pairings: (distance, track_id, detection_idx)
         distances = []
         for track_id, track in tracks.items():
-            track_center = compute_single_box_center(track['bbox'])
+            track_center = compute_center(track['bbox'])
             for i, det_center in enumerate(det_centers):
                 d = np.linalg.norm(track_center - det_center)
                 distances.append((d, track_id, i))
@@ -78,6 +78,7 @@ def track_by_distance(predictions, num_frames, tau, max_dist=50):
 
     return trajectories
 
+# Visualization
 
 def draw_trajectories(image, trajectories, max_dist=50):
     img = image.copy()
@@ -108,23 +109,25 @@ def draw_trajectories(image, trajectories, max_dist=50):
 
 # ---------------- MAIN ----------------
 
-image_sequence_path = "../sequence"
-predictions_file_path = "predictions.pickle"
+image_sequence_path = '../sequence'
+predictions_file_path = 'predictions.pickle'
+# Track stop thresholds
 taus = [2, 5, 10]
 
-# Load predictions
-with open(predictions_file_path, "rb") as f:
+# Load detections
+with open(predictions_file_path, 'rb') as f:
     predictions = pickle.load(f)
+
+images = []
+for fname in sorted(os.listdir(image_sequence_path)):
+    images.append(cv2.imread(os.path.join(image_sequence_path, fname)))
 
 num_frames = len(predictions)
 
-# Load first frame
-first_frame_path = os.path.join(image_sequence_path, sorted(os.listdir(image_sequence_path))[0])
-first_frame = cv2.imread(first_frame_path)
+first_frame = images[0]
 
-# Run tracker
 for tau in taus:
     trajectories = track_by_distance(predictions, num_frames, tau)
     vis = draw_trajectories(first_frame, trajectories)
-    cv2.imwrite(f"tracks_tau_{tau}.png", vis)
+    cv2.imwrite(f"tracks_by_distance_tau_{tau}.png", vis)
     print(f"τ = {tau}, total tracks: {len(trajectories)}")
